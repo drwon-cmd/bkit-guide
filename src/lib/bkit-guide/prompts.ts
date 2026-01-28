@@ -226,7 +226,7 @@ export function detectLanguage(text: string): string {
   // Chinese detection (distinguish Simplified vs Traditional)
   if (/[\u4E00-\u9FFF]/.test(text) && !/[\uAC00-\uD7AF]/.test(text)) {
     // Traditional Chinese specific characters (繁體字)
-    const traditionalChars = /[國學書體語點機關車門電腦網頁裡種這說開認視聽寫買賣圖書館學習環境關係發現經驗處話題當時實間]/;
+    const traditionalChars = /[國學書體語點機關車門電腦網頁裡種這說開認視聽寫買賣圖書館學習環境關係發現經驗處話題當時實間麼個們來為會從無與過對還進東車長門開關頭風飛馬魚鳥黃齊齒龍龜]/;
     if (traditionalChars.test(text)) return 'zh-TW';
     // Default to Simplified Chinese (简体字)
     return 'zh';
