@@ -1,8 +1,9 @@
 // bkit-guide Knowledge Base
-// Integrated RAG: GitHub Docs + Accumulated Q&A
+// Integrated RAG: GitHub Docs + Accumulated Q&A + Web Search
 
 import { searchGitHubDocs } from './github-fetcher';
 import { searchSimilarQAs } from './qa-indexer';
+import { searchWeb, shouldSearchWeb, formatWebResults } from './web-search';
 
 // Priority weights
 const GITHUB_DOCS_PRIORITY = 1.0;
@@ -118,12 +119,14 @@ export async function buildChatContext(
   options: {
     language?: string;
     maxResults?: number;
+    enableWebSearch?: boolean;
   } = {}
 ): Promise<{
   context: string;
   sourcesUsed: string[];
+  webSearchUsed: boolean;
 }> {
-  const { maxResults = 8 } = options;
+  const { maxResults = 8, enableWebSearch = true } = options;
 
   const searchResult = await searchKnowledgeBase(question, {
     githubLimit: Math.ceil(maxResults * 0.6),
@@ -135,9 +138,34 @@ export async function buildChatContext(
     .slice(0, maxResults)
     .map((r) => r.reference);
 
+  let context = searchResult.context;
+  let webSearchUsed = false;
+
+  // Check if web search is needed
+  if (enableWebSearch) {
+    const topScore = searchResult.results[0]?.score ?? 1;
+    const resultCount = searchResult.results.length;
+
+    if (shouldSearchWeb(question, resultCount, topScore)) {
+      const webResults = await searchWeb(question, {
+        maxResults: 3,
+        searchDepth: 'basic',
+        includeAnswer: true,
+      });
+
+      if (webResults.results.length > 0) {
+        const webContext = formatWebResults(webResults.results);
+        context = context ? `${context}\n\n${webContext}` : webContext;
+        sourcesUsed.push(...webResults.results.map((r) => `🌐 ${r.url}`));
+        webSearchUsed = true;
+      }
+    }
+  }
+
   return {
-    context: searchResult.context,
+    context,
     sourcesUsed,
+    webSearchUsed,
   };
 }
 
