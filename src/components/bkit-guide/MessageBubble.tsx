@@ -53,12 +53,18 @@ export function MessageBubble({
           <div
             className="prose prose-invert prose-sm max-w-none
               prose-headings:text-gray-100 prose-headings:font-semibold
-              prose-p:text-gray-200 prose-p:leading-relaxed
+              prose-h2:mt-6 prose-h2:mb-3 prose-h3:mt-5 prose-h3:mb-2
+              prose-p:text-gray-200 prose-p:leading-relaxed prose-p:my-4
               prose-strong:text-white
               prose-code:text-emerald-300 prose-code:bg-gray-700 prose-code:px-1 prose-code:py-0.5 prose-code:rounded
-              prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-700
-              prose-ul:text-gray-200 prose-ol:text-gray-200
-              prose-li:marker:text-emerald-400"
+              prose-pre:bg-gray-900 prose-pre:border prose-pre:border-gray-700 prose-pre:my-4
+              prose-ul:text-gray-200 prose-ul:my-4
+              prose-ol:text-gray-200 prose-ol:my-4
+              prose-li:marker:text-emerald-400 prose-li:my-2
+              prose-table:border prose-table:border-gray-600 prose-table:border-collapse prose-table:my-4
+              prose-th:border prose-th:border-gray-600 prose-th:bg-gray-700 prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:text-gray-100
+              prose-td:border prose-td:border-gray-600 prose-td:px-3 prose-td:py-2 prose-td:text-gray-200
+              prose-hr:border-gray-600 prose-hr:my-6"
             dangerouslySetInnerHTML={{ __html: displayContent }}
           />
         )}
