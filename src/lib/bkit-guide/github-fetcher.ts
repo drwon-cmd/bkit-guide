@@ -1,14 +1,12 @@
 // bkit-guide GitHub Fetcher
 // Fetches official documentation from bkit GitHub repository
-// Uses local embeddings (Xenova/all-MiniLM-L6-v2)
+// Uses MongoDB Atlas Vector Search for embeddings
 
-import * as lancedb from '@lancedb/lancedb';
-import path from 'path';
+import { db } from '@/lib/adapters';
 
 const GITHUB_REPO = 'popup-studio-ai/bkit-claude-code';
 const GITHUB_BRANCH = 'main';
-const LANCEDB_PATH = process.env.LANCEDB_PATH || path.join(process.cwd(), 'data', 'lancedb');
-const TABLE_NAME = 'bkit_github_docs';
+const COLLECTION_NAME = 'bkit_github_docs';
 
 // Files to index from the repository
 const FILES_TO_INDEX = [
@@ -59,8 +57,8 @@ async function getLocalEmbedding(text: string): Promise<number[]> {
 }
 
 // Fetch file content from GitHub
-async function fetchGitHubFile(path: string): Promise<string | null> {
-  const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${path}`;
+async function fetchGitHubFile(filePath: string): Promise<string | null> {
+  const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${GITHUB_BRANCH}/${filePath}`;
 
   try {
     const response = await fetch(url);
@@ -101,37 +99,24 @@ function chunkContent(
 }
 
 // Detect category from file path
-function getCategoryFromPath(path: string): string {
-  if (path.includes('skills/')) return 'skills';
-  if (path.includes('agents/')) return 'agents';
-  if (path.includes('bkit-system/')) return 'system';
-  if (path === 'README.md') return 'overview';
-  if (path === 'CHANGELOG.md') return 'changelog';
+function getCategoryFromPath(filePath: string): string {
+  if (filePath.includes('skills/')) return 'skills';
+  if (filePath.includes('agents/')) return 'agents';
+  if (filePath.includes('bkit-system/')) return 'system';
+  if (filePath === 'README.md') return 'overview';
+  if (filePath === 'CHANGELOG.md') return 'changelog';
   return 'general';
 }
 
-// Ensure table exists with correct schema (384-dim)
-async function ensureTable(db: lancedb.Connection): Promise<lancedb.Table> {
-  try {
-    return await db.openTable(TABLE_NAME);
-  } catch {
-    await db.createTable(TABLE_NAME, [
-      {
-        id: 'init',
-        text: 'init',
-        source: 'init',
-        category: 'init',
-        chunkIndex: 0,
-        vector: new Array(384).fill(0),
-      }
-    ]);
-    const table = await db.openTable(TABLE_NAME);
-    await table.delete("id = 'init'");
-    return table;
+// Get collection
+async function getCollection() {
+  if (!db.isConnected()) {
+    await db.connect();
   }
+  return db.getCollection(COLLECTION_NAME);
 }
 
-// Sync GitHub docs to LanceDB
+// Sync GitHub docs to MongoDB
 export async function syncGitHubDocs(): Promise<{
   success: boolean;
   filesProcessed: number;
@@ -143,23 +128,19 @@ export async function syncGitHubDocs(): Promise<{
   let filesProcessed = 0;
 
   try {
-    const db = await lancedb.connect(LANCEDB_PATH);
+    const collection = await getCollection();
 
-    // Drop existing table and recreate
-    try {
-      await db.dropTable(TABLE_NAME);
-    } catch {
-      // Table might not exist
-    }
+    // Clear existing documents
+    await collection.deleteMany({});
 
-    const table = await ensureTable(db);
     const records: Array<{
-      id: string;
+      docId: string;
       text: string;
       source: string;
       category: string;
       chunkIndex: number;
-      vector: number[];
+      embedding: number[];
+      createdAt: Date;
     }> = [];
 
     for (const filePath of FILES_TO_INDEX) {
@@ -179,12 +160,13 @@ export async function syncGitHubDocs(): Promise<{
         try {
           const embedding = await getLocalEmbedding(chunk);
           records.push({
-            id: `${filePath}-${i}`,
+            docId: `${filePath}-${i}`,
             text: chunk,
             source: filePath,
             category: getCategoryFromPath(filePath),
             chunkIndex: i,
-            vector: embedding,
+            embedding,
+            createdAt: new Date(),
           });
           chunksIndexed++;
         } catch (error) {
@@ -194,7 +176,7 @@ export async function syncGitHubDocs(): Promise<{
     }
 
     if (records.length > 0) {
-      await table.add(records);
+      await collection.insertMany(records);
     }
 
     return {
@@ -213,7 +195,7 @@ export async function syncGitHubDocs(): Promise<{
   }
 }
 
-// Search GitHub docs
+// Search GitHub docs using MongoDB Atlas Vector Search
 export async function searchGitHubDocs(
   query: string,
   limit: number = 5
@@ -226,20 +208,70 @@ export async function searchGitHubDocs(
   }>
 > {
   try {
-    const db = await lancedb.connect(LANCEDB_PATH);
-    const table = await db.openTable(TABLE_NAME);
+    const collection = await getCollection();
     const queryEmbedding = await getLocalEmbedding(query);
 
-    const results = await table
-      .vectorSearch(queryEmbedding)
+    // Try MongoDB Atlas Vector Search first
+    try {
+      const results = await collection.aggregate([
+        {
+          $vectorSearch: {
+            index: 'vector_index',
+            path: 'embedding',
+            queryVector: queryEmbedding,
+            numCandidates: limit * 10,
+            limit: limit,
+          },
+        },
+        {
+          $project: {
+            text: 1,
+            source: 1,
+            category: 1,
+            score: { $meta: 'vectorSearchScore' },
+          },
+        },
+      ]).toArray();
+
+      return results.map((row) => ({
+        text: row.text as string,
+        source: row.source as string,
+        category: row.category as string,
+        score: 1 - (row.score as number),
+      }));
+    } catch {
+      // Fallback to text search if vector search not configured
+      return fallbackTextSearch(query, limit);
+    }
+  } catch (error) {
+    console.error('Search error:', error);
+    return [];
+  }
+}
+
+// Fallback text search when vector search is not configured
+async function fallbackTextSearch(
+  query: string,
+  limit: number
+): Promise<Array<{ text: string; source: string; category: string; score: number }>> {
+  try {
+    const collection = await getCollection();
+
+    const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+    if (keywords.length === 0) return [];
+
+    const regex = new RegExp(keywords.join('|'), 'i');
+
+    const results = await collection
+      .find({ text: { $regex: regex } })
       .limit(limit)
       .toArray();
 
-    return results.map((row: Record<string, unknown>) => ({
+    return results.map((row, index) => ({
       text: row.text as string,
       source: row.source as string,
       category: row.category as string,
-      score: row._distance as number,
+      score: index * 0.1,
     }));
   } catch {
     return [];
@@ -253,19 +285,24 @@ export async function getGitHubDocsStats(): Promise<{
   lastSync?: Date;
 } | null> {
   try {
-    const db = await lancedb.connect(LANCEDB_PATH);
-    const table = await db.openTable(TABLE_NAME);
-    const allRecords = await table.query().limit(10000).toArray();
+    const collection = await getCollection();
+    const totalChunks = await collection.countDocuments();
+
+    const categoryAgg = await collection
+      .aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }])
+      .toArray();
 
     const byCategory: Record<string, number> = {};
-    allRecords.forEach((row: Record<string, unknown>) => {
-      const category = row.category as string;
-      byCategory[category] = (byCategory[category] || 0) + 1;
+    categoryAgg.forEach((item) => {
+      byCategory[item._id as string] = item.count;
     });
 
+    const lastDoc = await collection.findOne({}, { sort: { createdAt: -1 } });
+
     return {
-      totalChunks: allRecords.length,
+      totalChunks,
       byCategory,
+      lastSync: lastDoc?.createdAt as Date | undefined,
     };
   } catch {
     return null;

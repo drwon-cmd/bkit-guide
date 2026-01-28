@@ -2,7 +2,7 @@
 
 > bkit (Claude Code Plugin) 설치/사용 가이드 챗봇
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/popup-studio-ai/bkit-guide)
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/drwon-cmd/bkit-guide)
 
 ## 기능
 
@@ -10,6 +10,7 @@
 - **크라우드소싱 지식베이스**: 모든 Q&A 누적 → 시간이 지날수록 성장
 - **다국어 지원**: 한국어, 영어, 일본어, 중국어
 - **실시간 스트리밍**: Claude API 스트리밍 응답
+- **서버리스 지원**: Vercel 배포 가능 (MongoDB Atlas Vector Search 사용)
 
 ## 다루는 주제
 
@@ -35,22 +36,46 @@ cp .env.example .env.local
 ANTHROPIC_API_KEY=sk-ant-api03-xxxxx
 MONGODB_URI=mongodb+srv://...
 MONGODB_DB_NAME=bkit_guide
-
-# 선택 (기본값: ./lancedb)
-LANCEDB_PATH=./lancedb
 ```
 
-### 2. 의존성 설치
+### 2. MongoDB Atlas Vector Search 인덱스 생성
+
+MongoDB Atlas에서 다음 컬렉션에 Vector Search 인덱스를 생성하세요:
+
+**컬렉션: `bkit_github_docs`**
+```json
+{
+  "fields": [
+    {
+      "type": "vector",
+      "path": "embedding",
+      "numDimensions": 384,
+      "similarity": "cosine"
+    }
+  ]
+}
+```
+
+**컬렉션: `bkit_qa_embeddings`**
+```json
+{
+  "fields": [
+    {
+      "type": "vector",
+      "path": "embedding",
+      "numDimensions": 384,
+      "similarity": "cosine"
+    }
+  ]
+}
+```
+
+인덱스 이름: `vector_index`
+
+### 3. 의존성 설치
 
 ```bash
 npm install
-```
-
-### 3. GitHub 문서 동기화
-
-```bash
-# 개발 서버 실행 후
-curl -X POST http://localhost:3000/api/bkit-guide/sync
 ```
 
 ### 4. 개발 서버 실행
@@ -61,13 +86,19 @@ npm run dev
 
 http://localhost:3000 접속
 
+### 5. GitHub 문서 동기화
+
+```bash
+curl -X POST http://localhost:3000/api/bkit-guide/sync
+```
+
 ## 배포
 
 ### Vercel (권장)
 
 1. GitHub에 푸시
 2. Vercel에서 Import
-3. 환경 변수 설정
+3. 환경 변수 설정 (ANTHROPIC_API_KEY, MONGODB_URI)
 4. 배포
 
 ### Docker
@@ -96,10 +127,28 @@ CMD ["npm", "start"]
 
 - **Framework**: Next.js 15
 - **AI**: Claude API (Anthropic)
-- **Vector DB**: LanceDB
-- **Embeddings**: Xenova/transformers (로컬, 무료)
+- **Vector Search**: MongoDB Atlas Vector Search
+- **Embeddings**: Xenova/transformers (로컬, 무료, 384-dim)
 - **Database**: MongoDB Atlas
 - **Styling**: Tailwind CSS
+
+## 아키텍처
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  MongoDB Atlas                                              │
+├─────────────────────────────────────────────────────────────┤
+│  bkit_qa          - Q&A 원본 저장                           │
+│  bkit_github_docs - GitHub 문서 + 벡터 임베딩               │
+│  bkit_qa_embeddings - Q&A 벡터 임베딩                       │
+└─────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────┐
+│  RAG Pipeline                                               │
+├─────────────────────────────────────────────────────────────┤
+│  질문 → 로컬 임베딩 → MongoDB Vector Search → Claude 답변   │
+└─────────────────────────────────────────────────────────────┘
+```
 
 ## 라이선스
 
@@ -107,4 +156,4 @@ MIT License
 
 ---
 
-Built with ❤️ by [popup-studio-ai](https://github.com/popup-studio-ai)
+Built with Claude Code by [drwon-cmd](https://github.com/drwon-cmd)

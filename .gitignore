@@ -16,8 +16,8 @@ dist/
 .env.test.local
 .env.production.local
 
-# LanceDB data (runtime generated)
-data/
+# Model cache (runtime generated)
+.transformers-cache/
 
 # IDE
 .vscode/

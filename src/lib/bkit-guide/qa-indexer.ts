@@ -1,13 +1,11 @@
 // bkit-guide Q&A Indexer
-// Indexes Q&A pairs to LanceDB for vector search
+// Indexes Q&A pairs to MongoDB Atlas Vector Search
 // Uses local embeddings (Xenova/all-MiniLM-L6-v2)
 
-import * as lancedb from '@lancedb/lancedb';
-import path from 'path';
+import { db } from '@/lib/adapters';
 import type { BkitQA } from './qa-store';
 
-const LANCEDB_PATH = process.env.LANCEDB_PATH || path.join(process.cwd(), 'data', 'lancedb');
-const TABLE_NAME = 'bkit_qa_embeddings';
+const COLLECTION_NAME = 'bkit_qa_embeddings';
 
 // Singleton for local embeddings pipeline
 let localEmbeddingsPipeline: unknown = null;
@@ -30,60 +28,49 @@ async function getLocalEmbedding(text: string): Promise<number[]> {
   return Array.from(output.data);
 }
 
-// Ensure table exists with correct schema (384-dim)
-async function ensureTable(db: lancedb.Connection): Promise<lancedb.Table> {
-  try {
-    return await db.openTable(TABLE_NAME);
-  } catch {
-    await db.createTable(TABLE_NAME, [
-      {
-        id: 'init',
-        question: 'init',
-        answer: 'init',
-        combined: 'init',
-        category: 'init',
-        language: 'init',
-        qaId: 'init',
-        createdAt: new Date().toISOString(),
-        vector: new Array(384).fill(0),
-      }
-    ]);
-    const table = await db.openTable(TABLE_NAME);
-    await table.delete("id = 'init'");
-    return table;
+// Get collection
+async function getCollection() {
+  if (!db.isConnected()) {
+    await db.connect();
   }
+  return db.getCollection(COLLECTION_NAME);
 }
 
 // Index a single Q&A pair
 export async function indexQA(qa: BkitQA): Promise<boolean> {
   try {
-    const db = await lancedb.connect(LANCEDB_PATH);
-    const table = await ensureTable(db);
+    const collection = await getCollection();
 
     // Combine question and answer for embedding
     const combined = `질문: ${qa.question}\n\n답변: ${qa.answer}`;
     const embedding = await getLocalEmbedding(combined);
 
     const record = {
-      id: qa._id.toString(),
+      qaId: qa._id.toString(),
       question: qa.question,
       answer: qa.answer,
       combined,
       category: qa.category,
       language: qa.language,
-      qaId: qa._id.toString(),
-      createdAt: qa.createdAt.toISOString(),
-      vector: embedding,
+      embedding,
+      createdAt: qa.createdAt,
     };
 
-    await table.add([record]);
+    // Upsert to avoid duplicates
+    await collection.updateOne(
+      { qaId: qa._id.toString() },
+      { $set: record },
+      { upsert: true }
+    );
+
     return true;
-  } catch {
+  } catch (error) {
+    console.error('Index Q&A error:', error);
     return false;
   }
 }
 
-// Search similar Q&As
+// Search similar Q&As using MongoDB Atlas Vector Search
 export async function searchSimilarQAs(
   query: string,
   limit: number = 5
@@ -98,22 +85,76 @@ export async function searchSimilarQAs(
   }>
 > {
   try {
-    const db = await lancedb.connect(LANCEDB_PATH);
-    const table = await db.openTable(TABLE_NAME);
+    const collection = await getCollection();
     const queryEmbedding = await getLocalEmbedding(query);
 
-    const results = await table
-      .vectorSearch(queryEmbedding)
+    // Try MongoDB Atlas Vector Search first
+    try {
+      const results = await collection.aggregate([
+        {
+          $vectorSearch: {
+            index: 'vector_index',
+            path: 'embedding',
+            queryVector: queryEmbedding,
+            numCandidates: limit * 10,
+            limit: limit,
+          },
+        },
+        {
+          $project: {
+            question: 1,
+            answer: 1,
+            category: 1,
+            language: 1,
+            qaId: 1,
+            score: { $meta: 'vectorSearchScore' },
+          },
+        },
+      ]).toArray();
+
+      return results.map((row) => ({
+        question: row.question as string,
+        answer: row.answer as string,
+        category: row.category as string,
+        language: row.language as string,
+        qaId: row.qaId as string,
+        score: 1 - (row.score as number),
+      }));
+    } catch {
+      // Fallback to text search if vector search not configured
+      return fallbackTextSearch(query, limit);
+    }
+  } catch (error) {
+    console.error('Search Q&A error:', error);
+    return [];
+  }
+}
+
+// Fallback text search when vector search is not configured
+async function fallbackTextSearch(
+  query: string,
+  limit: number
+): Promise<Array<{ question: string; answer: string; category: string; language: string; qaId: string; score: number }>> {
+  try {
+    const collection = await getCollection();
+
+    const keywords = query.toLowerCase().split(/\s+/).filter(k => k.length > 2);
+    if (keywords.length === 0) return [];
+
+    const regex = new RegExp(keywords.join('|'), 'i');
+
+    const results = await collection
+      .find({ $or: [{ question: { $regex: regex } }, { answer: { $regex: regex } }] })
       .limit(limit)
       .toArray();
 
-    return results.map((row: Record<string, unknown>) => ({
+    return results.map((row, index) => ({
       question: row.question as string,
       answer: row.answer as string,
       category: row.category as string,
       language: row.language as string,
       qaId: row.qaId as string,
-      score: row._distance as number,
+      score: index * 0.1,
     }));
   } catch {
     return [];
@@ -127,22 +168,29 @@ export async function getQAEmbeddingsStats(): Promise<{
   byLanguage: Record<string, number>;
 } | null> {
   try {
-    const db = await lancedb.connect(LANCEDB_PATH);
-    const table = await db.openTable(TABLE_NAME);
-    const allRecords = await table.query().limit(10000).toArray();
+    const collection = await getCollection();
+    const totalIndexed = await collection.countDocuments();
+
+    const categoryAgg = await collection
+      .aggregate([{ $group: { _id: '$category', count: { $sum: 1 } } }])
+      .toArray();
 
     const byCategory: Record<string, number> = {};
-    const byLanguage: Record<string, number> = {};
+    categoryAgg.forEach((item) => {
+      byCategory[item._id as string] = item.count;
+    });
 
-    allRecords.forEach((row: Record<string, unknown>) => {
-      const category = row.category as string;
-      const language = row.language as string;
-      byCategory[category] = (byCategory[category] || 0) + 1;
-      byLanguage[language] = (byLanguage[language] || 0) + 1;
+    const languageAgg = await collection
+      .aggregate([{ $group: { _id: '$language', count: { $sum: 1 } } }])
+      .toArray();
+
+    const byLanguage: Record<string, number> = {};
+    languageAgg.forEach((item) => {
+      byLanguage[item._id as string] = item.count;
     });
 
     return {
-      totalIndexed: allRecords.length,
+      totalIndexed,
       byCategory,
       byLanguage,
     };
@@ -154,9 +202,8 @@ export async function getQAEmbeddingsStats(): Promise<{
 // Delete Q&A from index
 export async function deleteQAFromIndex(qaId: string): Promise<boolean> {
   try {
-    const db = await lancedb.connect(LANCEDB_PATH);
-    const table = await db.openTable(TABLE_NAME);
-    await table.delete(`qaId = '${qaId.replace(/'/g, "''")}'`);
+    const collection = await getCollection();
+    await collection.deleteOne({ qaId });
     return true;
   } catch {
     return false;
