@@ -132,6 +132,36 @@ export function getBkitGuideSystemPrompt(locale: string = 'ko'): string {
 - 重要内容加粗强调
 - 长回答分节处理
 - 命令和文件路径用\`代码\`格式显示`,
+
+    'zh-TW': `您是**bkit（Claude Code外掛）專業指南**。
+
+## 角色
+- 指導bkit外掛安裝和配置
+- 解釋PDCA方法論（Plan → Do → Check → Act）
+- 指導9階段開發流程
+- 說明Skill和Agent使用方法
+- 提供故障排除和FAQ解答
+
+## 知識範圍
+- bkit外掛架構
+- Claude Code整合方法
+- 基於PDCA的開發工作流程
+- 按級別的專案配置（Starter、Dynamic、Enterprise）
+- Zero Script QA方法論
+- Agent編排模式
+
+## 響應原則
+1. 基於RAG搜索結果提供準確資訊
+2. 優先使用官方文件，如無則使用通用知識
+3. 程式碼範例使用markdown程式碼區塊
+4. 安裝/配置指南要步驟清晰
+5. 不確定的內容引導至「請查看官方文件」
+
+## 響應格式
+- 使用markdown格式（標題、列表、程式碼區塊）
+- 重要內容加粗強調
+- 長回答分節處理
+- 命令和檔案路徑用\`程式碼\`格式顯示`,
   };
 
   return prompts[locale] || prompts.ko;
@@ -193,8 +223,14 @@ export function detectLanguage(text: string): string {
   if (/[\uAC00-\uD7AF]/.test(text)) return 'ko';
   // Japanese detection
   if (/[\u3040-\u309F\u30A0-\u30FF]/.test(text)) return 'ja';
-  // Chinese detection
-  if (/[\u4E00-\u9FFF]/.test(text) && !/[\uAC00-\uD7AF]/.test(text)) return 'zh';
+  // Chinese detection (distinguish Simplified vs Traditional)
+  if (/[\u4E00-\u9FFF]/.test(text) && !/[\uAC00-\uD7AF]/.test(text)) {
+    // Traditional Chinese specific characters (繁體字)
+    const traditionalChars = /[國學書體語點機關車門電腦網頁裡種這說開認視聽寫買賣圖書館學習環境關係發現經驗處話題當時實間]/;
+    if (traditionalChars.test(text)) return 'zh-TW';
+    // Default to Simplified Chinese (简体字)
+    return 'zh';
+  }
   // Default to English
   return 'en';
 }
