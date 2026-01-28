@@ -2,6 +2,7 @@
 
 'use client';
 
+import { useState } from 'react';
 import { cn } from '@/lib/utils/cn';
 import { marked } from 'marked';
 
@@ -19,9 +20,23 @@ export function MessageBubble({
   isStreaming,
 }: MessageBubbleProps) {
   const isUser = role === 'user';
+  const [copied, setCopied] = useState(false);
 
   // Parse markdown for assistant messages
   const displayContent = isUser ? content : marked(content) as string;
+
+  // Show copy button for longer assistant messages (more than 200 chars)
+  const showCopyButton = !isUser && !isStreaming && content.length > 200;
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
 
   return (
     <div className={cn('flex w-full', isUser ? 'justify-end' : 'justify-start')}>
@@ -69,19 +84,49 @@ export function MessageBubble({
           />
         )}
 
-        {timestamp && (
-          <span
-            className={cn(
-              'text-xs mt-2 block',
-              isUser ? 'text-blue-200' : 'text-gray-500'
-            )}
-          >
-            {new Date(timestamp).toLocaleTimeString('ko-KR', {
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </span>
-        )}
+        {/* Copy button and timestamp row */}
+        <div className={cn(
+          'flex items-center mt-2',
+          showCopyButton ? 'justify-between' : 'justify-end'
+        )}>
+          {showCopyButton && (
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-emerald-400 transition-colors"
+              title="답변 복사"
+            >
+              {copied ? (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>복사됨!</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  <span>복사</span>
+                </>
+              )}
+            </button>
+          )}
+
+          {timestamp && (
+            <span
+              className={cn(
+                'text-xs',
+                isUser ? 'text-blue-200' : 'text-gray-500'
+              )}
+            >
+              {new Date(timestamp).toLocaleTimeString('ko-KR', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
