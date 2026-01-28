@@ -148,23 +148,46 @@ export function ChatInterface({
     <div className="flex flex-col h-full bg-gray-900">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900">
-        <div className="flex items-center gap-3">
+        <button
+          onClick={() => {
+            setMessages([]);
+            setInput('');
+            setStreamingContent('');
+          }}
+          className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
+          title="새 대화 시작"
+        >
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold">
             B
           </div>
-          <div>
+          <div className="text-left">
             <h2 className="font-semibold text-white">bkit Guide</h2>
             <p className="text-sm text-gray-400">Claude Code Plugin Expert</p>
           </div>
+        </button>
+        <div className="flex items-center gap-2">
+          {messages.length > 0 && (
+            <button
+              onClick={() => {
+                setMessages([]);
+                setInput('');
+                setStreamingContent('');
+              }}
+              className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+              title="대화 초기화"
+            >
+              🔄 새 대화
+            </button>
+          )}
+          <a
+            href="https://github.com/popup-studio-ai/bkit-claude-code"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            GitHub
+          </a>
         </div>
-        <a
-          href="https://github.com/popup-studio-ai/bkit-claude-code"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
-        >
-          GitHub
-        </a>
       </div>
 
       {/* Messages Area */}
