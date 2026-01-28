@@ -6,7 +6,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { MessageBubble } from './MessageBubble';
 import { SuggestedQuestions } from './SuggestedQuestions';
-import { FeedbackButtons } from './FeedbackButtons';
+
+interface WebSource {
+  url: string;
+  title?: string;
+}
 
 interface Message {
   id: string;
@@ -14,6 +18,7 @@ interface Message {
   content: string;
   timestamp: Date;
   qaId?: string;
+  webSources?: WebSource[];
 }
 
 interface ChatInterfaceProps {
@@ -79,6 +84,7 @@ export function ChatInterface({
       const decoder = new TextDecoder();
       let fullContent = '';
       let lastQaId: string | undefined;
+      let webSources: WebSource[] = [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -99,6 +105,15 @@ export function ChatInterface({
 
               if (data.done) {
                 lastQaId = data.qaId;
+                // Extract web sources (those starting with 🌐)
+                if (data.sourcesUsed && Array.isArray(data.sourcesUsed)) {
+                  webSources = data.sourcesUsed
+                    .filter((s: string) => s.startsWith('🌐'))
+                    .map((s: string) => ({
+                      url: s.replace('🌐 ', ''),
+                      title: new URL(s.replace('🌐 ', '')).hostname,
+                    }));
+                }
               }
 
               if (data.error) {
@@ -118,6 +133,7 @@ export function ChatInterface({
         content: fullContent,
         timestamp: new Date(),
         qaId: lastQaId,
+        webSources: webSources.length > 0 ? webSources : undefined,
       };
       setMessages((prev) => [...prev, assistantMessage]);
       setStreamingContent('');
@@ -219,18 +235,14 @@ export function ChatInterface({
         )}
 
         {messages.map((message) => (
-          <div key={message.id}>
-            <MessageBubble
-              role={message.role}
-              content={message.content}
-              timestamp={message.timestamp}
-            />
-            {message.role === 'assistant' && message.qaId && (
-              <div className="ml-12 mt-1">
-                <FeedbackButtons qaId={message.qaId} />
-              </div>
-            )}
-          </div>
+          <MessageBubble
+            key={message.id}
+            role={message.role}
+            content={message.content}
+            timestamp={message.timestamp}
+            qaId={message.qaId}
+            webSources={message.webSources}
+          />
         ))}
 
         {streamingContent && (
