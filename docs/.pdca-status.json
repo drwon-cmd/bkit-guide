@@ -1,0 +1,78 @@
+{
+  "version": "2.0",
+  "lastUpdated": "2026-01-29T04:04:08.307Z",
+  "activeFeatures": [
+    "ui-ux-enhancement",
+    "bkit-guide"
+  ],
+  "primaryFeature": "bkit-guide",
+  "features": {
+    "ui-ux-enhancement": {
+      "phase": "completed",
+      "planPath": "docs/01-plan/features/ui-ux-enhancement.plan.md",
+      "designPath": "docs/02-design/features/ui-ux-enhancement.design.md",
+      "analysisPath": "docs/03-analysis/ui-ux-enhancement.analysis.md",
+      "reportPath": "docs/04-report/ui-ux-enhancement.report.md",
+      "createdAt": "2026-01-29",
+      "updatedAt": "2026-01-29",
+      "doCompleted": true,
+      "checkCompleted": true,
+      "matchRate": 100,
+      "reportCompleted": true
+    },
+    "bkit-guide": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-01-29T04:00:50.476Z",
+        "lastUpdated": "2026-01-29T04:04:04.212Z"
+      }
+    }
+  },
+  "pipeline": {
+    "currentPhase": 1,
+    "level": "Dynamic",
+    "phaseHistory": []
+  },
+  "session": {
+    "startedAt": "2026-01-29T01:03:42.225Z",
+    "onboardingCompleted": false,
+    "lastActivity": "2026-01-29T04:04:08.307Z"
+  },
+  "history": [
+    {
+      "timestamp": "2026-01-29T04:00:50.476Z",
+      "feature": "bkit-guide",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-01-29T04:03:11.396Z",
+      "feature": "bkit-guide",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-01-29T04:03:11.487Z",
+      "feature": "bkit-guide",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-01-29T04:03:16.422Z",
+      "feature": "bkit-guide",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-01-29T04:04:04.212Z",
+      "feature": "bkit-guide",
+      "phase": "do",
+      "action": "updated"
+    }
+  ]
+}
