@@ -161,9 +161,9 @@ export function ChatInterface({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gray-900">
+    <div className="flex flex-col h-full bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-800 bg-gray-900">
+      <div className="flex items-center justify-between p-4 sm:p-6 border-b border-neutral-100 bg-white">
         <button
           onClick={() => {
             setMessages([]);
@@ -173,12 +173,14 @@ export function ChatInterface({
           className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer"
           title="새 대화 시작"
         >
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white font-bold">
-            B
-          </div>
+          <img
+            src="/favicon.svg"
+            alt="bkit"
+            className="w-10 h-10 sm:w-12 sm:h-12"
+          />
           <div className="text-left">
-            <h2 className="font-semibold text-white">bkit Guide</h2>
-            <p className="text-sm text-gray-400">Claude Code Plugin Expert</p>
+            <h2 className="font-black text-black tracking-tight">Guide Bot</h2>
+            <p className="text-sm text-neutral-500">Claude Code Plugin Expert</p>
           </div>
         </button>
         <div className="flex items-center gap-2">
@@ -189,17 +191,17 @@ export function ChatInterface({
                 setInput('');
                 setStreamingContent('');
               }}
-              className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+              className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-full transition-all"
               title="대화 초기화"
             >
-              🔄 새 대화
+              새 대화
             </button>
           )}
           <a
             href="https://github.com/popup-studio-ai/bkit-claude-code"
             target="_blank"
             rel="noopener noreferrer"
-            className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
+            className="px-3 sm:px-4 py-1.5 sm:py-2 text-sm font-medium text-neutral-500 hover:text-black hover:bg-neutral-100 rounded-full transition-all"
           >
             GitHub
           </a>
@@ -207,23 +209,29 @@ export function ChatInterface({
       </div>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
         {messages.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-white text-3xl font-bold">
-              B
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-3">
+          <div className="text-center py-16 md:py-24 px-4">
+            <img
+              src="/favicon.svg"
+              alt="bkit"
+              className="w-20 h-20 sm:w-24 sm:h-24 mx-auto mb-8"
+            />
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-black tracking-tight mb-4">
               bkit Guide에 오신 것을 환영합니다
             </h3>
-            <p className="text-gray-400 max-w-md mx-auto mb-8">
+            <p className="text-neutral-500 max-w-lg mx-auto mb-10 text-sm sm:text-base leading-relaxed">
               bkit (Claude Code Plugin) 설치, 설정, 사용법에 대해 무엇이든 물어보세요.
               PDCA 방법론, 개발 파이프라인, Skill/Agent 사용법을 안내해드립니다.
             </p>
 
+            <div className="w-16 h-px bg-neutral-200 mx-auto mb-10" />
+
             {suggestedQuestions.length > 0 && (
-              <div className="max-w-2xl mx-auto">
-                <p className="text-sm text-gray-500 mb-3">자주 묻는 질문</p>
+              <div className="max-w-3xl mx-auto">
+                <p className="text-xs font-bold uppercase tracking-widest text-neutral-400 mb-4">
+                  자주 묻는 질문
+                </p>
                 <SuggestedQuestions
                   questions={suggestedQuestions}
                   onSelect={handleSend}
@@ -255,18 +263,18 @@ export function ChatInterface({
 
         {loading && !streamingContent && (
           <div className="flex justify-start">
-            <div className="bg-gray-800 rounded-2xl rounded-bl-md px-4 py-3">
-              <div className="flex items-center gap-1">
+            <div className="bg-neutral-50 border border-neutral-100 rounded-2xl md:rounded-3xl px-5 py-4">
+              <div className="flex items-center gap-1.5">
                 <span
-                  className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"
+                  className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce"
                   style={{ animationDelay: '0ms' }}
                 />
                 <span
-                  className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"
+                  className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce"
                   style={{ animationDelay: '150ms' }}
                 />
                 <span
-                  className="w-2 h-2 bg-emerald-400 rounded-full animate-bounce"
+                  className="w-2 h-2 bg-neutral-400 rounded-full animate-bounce"
                   style={{ animationDelay: '300ms' }}
                 />
               </div>
@@ -278,8 +286,8 @@ export function ChatInterface({
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t border-gray-800 bg-gray-900">
-        <div className="flex items-end gap-2 max-w-4xl mx-auto">
+      <div className="p-4 sm:p-6 border-t border-neutral-100 bg-white">
+        <div className="flex items-end gap-3 max-w-4xl mx-auto">
           <div className="flex-1 relative">
             <textarea
               ref={inputRef}
@@ -289,11 +297,12 @@ export function ChatInterface({
               placeholder="bkit에 대해 무엇이든 물어보세요..."
               disabled={loading}
               rows={1}
-              className="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-xl
-                text-white placeholder-gray-500 resize-none
-                focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent
+              className="w-full px-4 sm:px-5 py-3 sm:py-4 bg-neutral-50 border border-neutral-200 rounded-xl md:rounded-2xl
+                text-black placeholder-neutral-400 resize-none
+                focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-neutral-300
                 disabled:opacity-50 disabled:cursor-not-allowed
-                min-h-[48px] max-h-[200px]"
+                min-h-[52px] max-h-[200px] text-sm sm:text-base
+                transition-all hover:border-neutral-300"
               style={{ height: 'auto' }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
@@ -305,9 +314,9 @@ export function ChatInterface({
           <button
             onClick={() => handleSend()}
             disabled={loading || !input.trim()}
-            className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl
-              transition-colors disabled:opacity-50 disabled:cursor-not-allowed
-              flex items-center justify-center"
+            className="px-4 sm:px-5 py-3 sm:py-4 bg-black hover:bg-neutral-800 text-white rounded-full
+              transition-all hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed
+              flex items-center justify-center shadow-lg"
           >
             <svg
               className="w-5 h-5"
@@ -324,7 +333,7 @@ export function ChatInterface({
             </svg>
           </button>
         </div>
-        <p className="text-center text-xs text-gray-600 mt-2">
+        <p className="text-center text-xs text-neutral-400 mt-3">
           Shift+Enter로 줄바꿈, Enter로 전송
         </p>
       </div>

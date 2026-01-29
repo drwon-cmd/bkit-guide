@@ -39,15 +39,15 @@ export function FeedbackButtons({ qaId, onFeedback }: FeedbackButtonsProps) {
   };
 
   return (
-    <div className="flex items-center gap-1 mt-2">
-      <span className="text-xs text-gray-500 mr-1">도움이 됐나요?</span>
+    <div className="flex items-center gap-2 mt-2">
+      <span className="text-xs text-neutral-400">도움이 됐나요?</span>
       <button
         onClick={() => handleFeedback(true)}
         disabled={loading || feedback !== null}
-        className={`p-1 rounded transition-colors ${
+        className={`p-1.5 rounded-full transition-all ${
           feedback === 'up'
-            ? 'text-emerald-400'
-            : 'text-gray-500 hover:text-emerald-400'
+            ? 'text-black bg-neutral-100'
+            : 'text-neutral-400 hover:text-black hover:bg-neutral-100'
         } disabled:cursor-not-allowed`}
         title="도움이 됐어요"
       >
@@ -68,10 +68,10 @@ export function FeedbackButtons({ qaId, onFeedback }: FeedbackButtonsProps) {
       <button
         onClick={() => handleFeedback(false)}
         disabled={loading || feedback !== null}
-        className={`p-1 rounded transition-colors ${
+        className={`p-1.5 rounded-full transition-all ${
           feedback === 'down'
-            ? 'text-red-400'
-            : 'text-gray-500 hover:text-red-400'
+            ? 'text-red-500 bg-red-50'
+            : 'text-neutral-400 hover:text-red-500 hover:bg-red-50'
         } disabled:cursor-not-allowed`}
         title="아쉬워요"
       >
